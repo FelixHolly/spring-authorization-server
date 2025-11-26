@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: auth-server-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: auth-server
+      MYSQL_USER: authuser
+      MYSQL_PASSWORD: authpass
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - auth-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+      interval: 5s
+
+  auth-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: spring-auth-server
+    environment:
+      SPRING_APP_NAME: auth-server
+      SPRING_SECURITY_LOG_LEVEL: INFO
+      DATABASE_HOST: mysql
+      DATABASE_PORT: 3306
+      DATABASE_NAME: auth-server
+      DATABASE_USERNAME: root
+      DATABASE_PASSWORD: root
+      JPA_SHOW_SQL: "true"
+      HIBERNATE_FORMAT_SQL: "true"
+    ports:
+      - "8080:8080"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - auth-network
+    restart: unless-stopped
+
+networks:
+  auth-network:
+    driver: bridge
+
+volumes:
+  mysql_data:
+    driver: local
